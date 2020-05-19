@@ -1,0 +1,29 @@
+module: satosa.micro_services.webauthn_microservice.Webauthn
+name: Webauthn
+config:
+  #url of the webauthn module to redirect the user
+  redirect_url: "https://example.cz/authentication_request/"
+  #api url to check the result of the authentication
+  api_url: "https://example.cz/request/"
+  #your private key, the webauthn module must be provided your public key
+  private_key: "/var/satosa_config/private_key.pem"
+  #user identificator that is received from SATOSA and which the module uses to identify users
+  user_identificator: "user_id"
+  #parameter that is used to include/exclude those SPs that are in the following lists
+  exclude: True
+  #if exclude == True -> this is ignored, otherwise perform MFA only for the listed SPs
+  included_requesters:
+    - example1
+    - example2
+  #if exclude == True -> perform MFA for all SPs except for the listed ones, otherwise this is ignored
+  excluded_requesters:
+    - example1
+    - example2
+  #parameter that is used to determine what to do if there is a conflict in MFA required by the SP
+  #conflict_compatibility == True
+  #  config requires MFA but SP request requires SFA -> perform MFA but return that SFA took place
+  #  config does not require MFA but SP request requires MFA -> perform MFA and return that MFA took place
+  #conflict_compatibility == False
+  #  config requires MFA but SP request requires SFA -> fail
+  #  config does not require MFA but SP request requires MFA -> fail
+  conflict_compatibility: True
