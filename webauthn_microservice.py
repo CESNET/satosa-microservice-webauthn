@@ -10,7 +10,9 @@ from satosa.internal import InternalData
 from ..micro_services.base import ResponseMicroService
 from ..response import Redirect
 import time
+
 logger = logging.getLogger(__name__)
+
 
 class Webauthn(ResponseMicroService):
 
@@ -31,25 +33,27 @@ class Webauthn(ResponseMicroService):
     def _handle_webauthn_response(self, context):
         saved_state = context.state[self.name]
         internal_response = InternalData.from_dict(saved_state)
-        message = {"user_id": internal_response[self.user_id], "nonce": internal_response['nonce'], "time": str(int(time.time()))}
+        message = {"user_id": internal_response[self.user_id], "nonce": internal_response['nonce'],
+                   "time": str(int(time.time()))}
         message_json = json.dumps(message)
         jws = JWS(message_json, alg=self.signing_key.alg).sign_compact([self.signing_key])
         request = self.api_url + "/" + jws
         response = requests.get(request)
         response_dict = json.loads(response.text)
         if response_dict["result"] != "okay" or response_dict["nonce"] != internal_response["nonce"]:
-            return super().process(context, internal_response)
+            raise Exception("Authentication was unsuccessful.")
         if "authn_context_class_ref" in context.state:
             internal_response["auth_info"]["auth_class_ref"] = context.state["authn_context_class_ref"]
         return super().process(context, internal_response)
-
 
     def process(self, context, internal_response):
         client_mfa_requested = False
         client_sfa_requested = False
         if "authn_context_class_ref" in context.state and "mfa" in context.state["authn_context_class_ref"]:
             client_mfa_requested = True
-        if "authn_context_class_ref" in context.state and "sfa" in context.state["authn_context_class_ref"]:
+        if "authn_context_class_ref" in context.state and (
+                "sfa" in context.state["authn_context_class_ref"] or
+                "PasswordProtectedTransport" in context.state["authn_context_class_ref"]):
             client_sfa_requested = True
 
         config_mfa_requested = True
@@ -62,14 +66,12 @@ class Webauthn(ResponseMicroService):
         if not client_mfa_requested and not config_mfa_requested:
             return super().process(context, internal_response)
 
-        if client_mfa_requested and not config_mfa_requested:
-            context.state["conflict"] = "client"
-        elif client_sfa_requested and config_mfa_requested:
-            context.state["conflict"] = "config"
+        if client_sfa_requested and config_mfa_requested:
+            context.state["conflict"] = True
         else:
-            context.state["conflict"] = "0"
+            context.state["conflict"] = False
 
-        if not self.conflict_compatibility and context.state["conflict"] != "0":
+        if not self.conflict_compatibility and context.state["conflict"]:
             raise Exception("CONFLICT - SP and the Request are in a conflict - authentication could not take place.")
 
         user_id = internal_response[self.user_id]

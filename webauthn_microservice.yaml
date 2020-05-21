@@ -22,8 +22,6 @@ config:
   #parameter that is used to determine what to do if there is a conflict in MFA required by the SP
   #conflict_compatibility == True
   #  config requires MFA but SP request requires SFA -> perform MFA but return that SFA took place
-  #  config does not require MFA but SP request requires MFA -> perform MFA and return that MFA took place
   #conflict_compatibility == False
   #  config requires MFA but SP request requires SFA -> fail
-  #  config does not require MFA but SP request requires MFA -> fail
   conflict_compatibility: True
