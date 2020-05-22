@@ -3,6 +3,7 @@ import logging
 import random
 import string
 import requests
+import hmac
 from jwkest.jwk import rsa_load, RSAKey
 from jwkest.jws import JWS
 
@@ -40,7 +41,7 @@ class Webauthn(ResponseMicroService):
         request = self.api_url + "/" + jws
         response = requests.get(request)
         response_dict = json.loads(response.text)
-        if response_dict["result"] != "okay" or response_dict["nonce"] != internal_response["nonce"]:
+        if response_dict["result"] != "okay" or hmac.compare_digest(response_dict["nonce"], internal_response["nonce"]):
             raise Exception("Authentication was unsuccessful.")
         if "authn_context_class_ref" in context.state:
             internal_response["auth_info"]["auth_class_ref"] = context.state["authn_context_class_ref"]
@@ -77,7 +78,8 @@ class Webauthn(ResponseMicroService):
         user_id = internal_response[self.user_id]
         letters = string.ascii_lowercase
         actual_time = str(int(time.time()))
-        random_string = actual_time + ''.join(random.choice(letters) for i in range(54))
+        rand = random.SystemRandom()
+        random_string = actual_time + ''.join(rand.choice(letters) for i in range(54))
         internal_response['nonce'] = random_string
         context.state[self.name] = internal_response.to_dict()
         message = {"user_id": user_id, "nonce": random_string, "time": actual_time}
