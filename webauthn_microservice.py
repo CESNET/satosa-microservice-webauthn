@@ -24,8 +24,8 @@ class Webauthn(ResponseMicroService):
         self.exclude = config["exclude"]
         self.user_id = config["user_identificator"]
         self.conflict_compatibility = config["conflict_compatibility"]
-        self.included_requesters = config.get("included_requesters", [])
-        self.excluded_requesters = config.get("excluded_requesters", [])
+        self.included_requesters = config["included_requesters"] or []
+        self.excluded_requesters = config["excluded_requesters"] or []
         self.signing_key = RSAKey(key=rsa_load(config["private_key"]), use="sig", alg="RS256")
         self.endpoint = "/process"
         self.id_to_attr = config.get("id_to_attr", None)
@@ -41,7 +41,7 @@ class Webauthn(ResponseMicroService):
         request = self.api_url + "/" + jws
         response = requests.get(request)
         response_dict = json.loads(response.text)
-        if response_dict["result"] != "okay" or hmac.compare_digest(response_dict["nonce"], internal_response["nonce"]):
+        if response_dict["result"] != "okay" or not hmac.compare_digest(response_dict["nonce"], internal_response["nonce"]):
             raise Exception("Authentication was unsuccessful.")
         if "authn_context_class_ref" in context.state:
             internal_response["auth_info"]["auth_class_ref"] = context.state["authn_context_class_ref"]
