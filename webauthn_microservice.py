@@ -34,7 +34,7 @@ class Webauthn(ResponseMicroService):
     def _handle_webauthn_response(self, context):
         saved_state = context.state[self.name]
         internal_response = InternalData.from_dict(saved_state)
-        message = {"user_id": internal_response[self.user_id], "nonce": internal_response['nonce'],
+        message = {"user_id": internal_response["attributes"][self.user_id], "nonce": internal_response['nonce'],
                    "time": str(int(time.time()))}
         message_json = json.dumps(message)
         jws = JWS(message_json, alg=self.signing_key.alg).sign_compact([self.signing_key])
@@ -75,7 +75,7 @@ class Webauthn(ResponseMicroService):
         if not self.conflict_compatibility and context.state["conflict"]:
             raise Exception("CONFLICT - SP and the Request are in a conflict - authentication could not take place.")
 
-        user_id = internal_response[self.user_id]
+        user_id = internal_response["attributes"][self.user_id]
         letters = string.ascii_lowercase
         actual_time = str(int(time.time()))
         rand = random.SystemRandom()
